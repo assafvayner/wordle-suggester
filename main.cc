@@ -24,6 +24,7 @@ using std::cin;
 using std::endl;
 using std::filesystem::exists;
 using std::ifstream;
+using std::istream;
 using std::unordered_set;
 using std::string;
 
@@ -53,7 +54,27 @@ bool fill_words(unordered_set<string>& words, const string& words_file_name);
  */
 void print_top_25(vector<string>& words);
 
+/*
+ *prints and error message and exits
+ */
+void Usage();
+
 int main(int argc, char* argv[]) {
+  if (argc > 2) {
+    Usage();
+  }
+  ifstream ifs;
+  bool use_file = false;
+  if (argc == 2) {
+    if (!exists(argv[1])) {
+      Usage();
+    }
+    use_file = true;
+    ifs.open(argv[1]); // unhandled exception on failure
+  }
+
+  istream& in = use_file ? ifs : cin;
+
   bool op_successful;
 
   // not used
@@ -72,12 +93,12 @@ int main(int argc, char* argv[]) {
   string input;
   for (;;) {
     cout << endl << "input?:" << endl;
-    getline(cin, input);
-    if (!cin.eof() && cin.fail()) {
+    getline(in, input);
+    if (!in.eof() && in.fail()) {
       cerr << "a read from stdin failed. ending program." << endl;
       return EXIT_FAILURE;
     }
-    if (cin.eof() || input == "exit") {
+    if (in.eof() || input == "exit") {
       cout << "thanks for playing!" << endl;
       break;
     }
@@ -187,4 +208,9 @@ void print_top_25(vector<string>& words) {
   for (int i = 0; i < num_to_print; i++) {
     cout << words[i] << endl;
   }
+}
+
+void Usage() {
+  cerr << "Usage: ./main <optionl commands file>" <<  endl;
+  exit(EXIT_FAILURE);
 }

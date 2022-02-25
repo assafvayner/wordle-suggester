@@ -1,0 +1,19 @@
+pos i 3
+off r
+off a
+off s
+off e
+off h
+off n
+off k
+off y
+final i 2
+off g
+off z
+off m
+off o
+final i 4
+final v 3
+off c
+show
+exit
