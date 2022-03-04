@@ -16,4 +16,3 @@ final i 4
 final v 3
 off c
 show
-exit

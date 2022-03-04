@@ -1,4 +1,4 @@
-#include <stdlib.h>
+#include <cstdlib>
 #include <sys/wait.h>
 #include <unistd.h>
 #include <algorithm>
@@ -13,14 +13,15 @@
 
 #define MAX_COMMAND_ARG 3
 #define WORDLE_WORDS "wordle_words.txt"
-#define WORDS_FILE_NAME "words_alpha.txt"
+#define QUORDLE_WORDS "quordle_words.txt"
+#define ALL_WORDS "words_alpha.txt"
 #define WORDS_ZIP_NAME "words_alpha.zip"
 #define WORDS_ZIP_URL "https://github.com/dwyl/english-words/raw/master/words_alpha.zip"
 
 using std::any_of;
 using std::cerr;
-using std::cout;
 using std::cin;
+using std::cout;
 using std::endl;
 using std::filesystem::exists;
 using std::ifstream;
@@ -55,65 +56,84 @@ bool fill_words(unordered_set<string>& words, const string& words_file_name);
 void print_top_25(vector<string>& words);
 
 /*
+ *determines the words file based on the argument for the words file character
+ *W/w => wordle_words.txt, Q/q => quordle_words.txt, A/a => words_alpha.txt
+ *if neither of the above options returns empty strings.
+ */
+string arg_to_words_file(char arg);
+
+/*
  *prints and error message and exits
  */
 void Usage();
 
 int main(int argc, char* argv[]) {
-  if (argc > 2) {
+  if (argc > 3 || argc < 2) {
     Usage();
   }
+
+  string words_file_name = arg_to_words_file(argv[1][0]);
+
+  // set in to either command file or cin depending on params.
   ifstream ifs;
   bool use_file = false;
   if (argc == 2) {
-    if (!exists(argv[1])) {
+    if (!exists(argv[2])) {
       Usage();
     }
     use_file = true;
     ifs.open(argv[1]); // unhandled exception on failure
   }
-
   istream& in = use_file ? ifs : cin;
 
-  bool op_successful;
-
-  // not used
-  op_successful = ensure_words_file();
-  if (!op_successful) {
+  // currently the file fetched by this function is not used unless you wish to use
+  // alpha_words.txt for options. However ensure_words_file is a cool function
+  // fetch files of English words from github
+  if (words_file_name == ALL_WORDS && !ensure_words_file()) {
     return EXIT_FAILURE;
   }
 
+  // init options, only narrowed down
   unordered_set<string> options;
-  if (!fill_words(options, WORDLE_WORDS)) {
+  if (!fill_words(options, words_file_name)) {
     return EXIT_FAILURE;
   }
 
   Conditions conditions;
-  Conditions::Condition condition;
+  vector<Condition> condition;
+  
   string input;
   for (;;) {
     cout << endl << "input?:" << endl;
     getline(in, input);
+    // if fail on non-eof we treat as fail and exit immediately
     if (!in.eof() && in.fail()) {
-      cerr << "a read from stdin failed. ending program." << endl;
+      cerr << "a read failed. ending program." << endl;
       return EXIT_FAILURE;
     }
+    // exit conditions
     if (in.eof() || input == "exit") {
       cout << "thanks for playing!" << endl;
       break;
     }
     if (input == "show") {
       conditions.filter_words(options);
-      vector<string> suggestions = Suggester::suggest(options);
+      vector<string> suggestions = suggester::suggest(options);
       print_top_25(suggestions);
       continue;
     }
-    GetConditionFromString(input, &condition);
-    if (condition.code == Conditions::ConditionCode::INVALID) {
-      cerr << "bad user input for a condition try again" << endl;
-      continue;
+
+    // read string as condition, could be a number of conditions
+    if (!GetConditionsFromString(input, &condition)) {
+      cerr << "bad user input" << endl;
     }
-    conditions.set_condition(&condition);
+    for (auto& cond : condition) {
+      if (cond.code == ConditionCode::INVALID) {
+        cerr << "bad user input for a condition try again" << endl;
+        continue;
+      }
+      conditions.set_condition(&cond);
+    }
   }
 
   return EXIT_SUCCESS;
@@ -123,19 +143,22 @@ bool ensure_words_file() {
   int wait_res;
 
   // if file is present we are done
-  if (exists(WORDS_FILE_NAME)) {
+  if (exists(ALL_WORDS)) {
     return true;
   }
   
   char* const envp_empty[] = {nullptr};
-  
+
+  // fetch zip only if the zip is not already present
   if (!exists(WORDS_ZIP_NAME)) {
     if (!fork()) {
       // exec wget to get zip file
-      char* const command[] = {const_cast<char*>("wget"),
-                               const_cast<char*>("-q"),
-                               const_cast<char*>(WORDS_ZIP_URL),
-                               nullptr}; // args must end in null pointer
+      char* const command[] = {
+        const_cast<char*>("wget"),
+        const_cast<char*>("-q"), // quiet
+        const_cast<char*>(WORDS_ZIP_URL),
+        nullptr // args must end in null pointer
+      };
       execve("/usr/bin/wget", command, envp_empty);
       exit(EXIT_FAILURE);
     }
@@ -144,18 +167,19 @@ bool ensure_words_file() {
     wait(&wait_res);
 
     // if zip is still not present after we fetched then return error occured
-    if (!exists(WORDS_ZIP_NAME)) {
+    if (!exists(ALL_WORDS)) {
       return false;
     }
   }
 
-
   if (!fork()) {
     // exec unzip
-    char* const command[] = {const_cast<char*>("unzip"),
-                             const_cast<char*>("-qq"),
-                             const_cast<char*>(WORDS_ZIP_NAME),
-                             nullptr}; // args must end in null pointer
+    char* const command[] = {
+      const_cast<char*>("unzip"),
+      const_cast<char*>("-qq"),
+      const_cast<char*>(WORDS_ZIP_NAME),
+      nullptr // args must end in null pointer
+    };
     execve("/usr/bin/unzip", command, envp_empty);
     cerr << "exec failed" << endl;
     exit(EXIT_FAILURE);
@@ -165,7 +189,7 @@ bool ensure_words_file() {
   wait(&wait_res);
 
   // return if file exists
-  return exists(WORDS_FILE_NAME);
+  return exists(ALL_WORDS);
 }
 
 bool fill_words(unordered_set<string>& words, const string& words_file_name) {
@@ -204,13 +228,27 @@ bool fill_words(unordered_set<string>& words, const string& words_file_name) {
 
 
 void print_top_25(vector<string>& words) {
-  int num_to_print = words.size() > 25 ? 25 : words.size();
+  int num_to_print = words.size() < 25 ? words.size() : 25; // min
   for (int i = 0; i < num_to_print; i++) {
     cout << words[i] << endl;
   }
 }
 
 void Usage() {
-  cerr << "Usage: ./main <optionl commands file>" <<  endl;
+  cerr << "Usage: ./main <word bank w/q/a> <optionl commands file>" <<  endl;
   exit(EXIT_FAILURE);
+}
+
+string arg_to_words_file(char arg) {
+  arg = tolower(arg);
+  switch (arg) {
+  case ('w'):
+    return WORDLE_WORDS;
+  case ('q'):
+    return QUORDLE_WORDS;
+  case ('a'):
+    return ALL_WORDS;
+  default:
+    return "";  
+  }
 }

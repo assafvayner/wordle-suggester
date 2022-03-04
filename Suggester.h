@@ -12,6 +12,6 @@ using std::sort;
 using std::stable_sort;
 using std::vector;
 
-namespace Suggester {
+namespace suggester {
   vector<string> suggest(unordered_set<string>& options);
 }

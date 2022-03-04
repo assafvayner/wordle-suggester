@@ -57,7 +57,7 @@ static bool comp(const string& str1, const string& str2) {
   return diff > 0;
 };
 
-vector<string> Suggester::suggest(unordered_set<string>& words) {
+vector<string> suggester::suggest(unordered_set<string>& words) {
   counts_map = counts(words);
   ranks_cache = unordered_map<string, uint64_t>();
   
