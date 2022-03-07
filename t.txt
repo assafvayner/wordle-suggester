@@ -1,0 +1,8 @@
+off ramontnaltrckknowngholchldbfy
+final e 5
+pos e 2
+pos u 3
+final u 4
+pos i 3
+pos s 1
+show

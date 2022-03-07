@@ -105,8 +105,7 @@ int main(int argc, char* argv[]) {
   string input;
   for (;;) {
     cout << endl << "input?:" << endl;
-    //getline(in, input);
-    in >> input;
+    getline(in, input);
     // if fail on non-eof we treat as fail and exit immediately
     if (!in.eof() && in.fail()) {
       cerr << (in.fail()) << (in.eof()) << endl;
