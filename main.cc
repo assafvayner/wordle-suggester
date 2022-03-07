@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
       Usage();
     }
     use_file = true;
-    ifs.open(argv[1]); // unhandled exception on failure
+    ifs.open(argv[2]); // unhandled exception on failure
   }
   istream& in = use_file ? ifs : cin;
 
@@ -105,9 +105,11 @@ int main(int argc, char* argv[]) {
   string input;
   for (;;) {
     cout << endl << "input?:" << endl;
-    getline(in, input);
+    //getline(in, input);
+    in >> input;
     // if fail on non-eof we treat as fail and exit immediately
     if (!in.eof() && in.fail()) {
+      cerr << (in.fail()) << (in.eof()) << endl;
       cerr << "a read failed. ending program." << endl;
       return EXIT_FAILURE;
     }
