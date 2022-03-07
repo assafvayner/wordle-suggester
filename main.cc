@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
   // set in to either command file or cin depending on params.
   ifstream ifs;
   bool use_file = false;
-  if (argc == 2) {
+  if (argc == 3) {
     if (!exists(argv[2])) {
       Usage();
     }
